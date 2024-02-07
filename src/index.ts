@@ -62,7 +62,7 @@ app.post("/update/:school/:building/:type/:id/:status/:token", async (c) => {
   }
 
   //parse status to boolean
-  const boolStatus = status === "true" ? true : false;
+  const boolStatus = status.toLowerCase() === "true" ? true : false;
 
   const machineId = `${school}-${building}-${type}-${id}`;
   const entry = await prisma.machineLog.create({
