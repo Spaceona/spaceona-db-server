@@ -4,3 +4,4 @@ dist
 *.env
 *-firebase-*.json
 *.db
+*.tar.gz

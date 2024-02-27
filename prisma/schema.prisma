@@ -15,4 +15,5 @@ model MachineLog {
   machineId String
   timestamp DateTime @default(now())
   isInUse   Boolean
+  body      String   @default("{}")
 }

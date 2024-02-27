@@ -1,0 +1,27 @@
+version: "3.9"
+services:
+  app:
+    build: .
+    image: spaceona-db-server
+    ports:
+      - "80:3000"
+    volumes:
+      - sqlite-data:/usr/src/app/prisma/data
+      - logs-data:/usr/src/app/logs
+      - ./spotr-22162-firebase-adminsdk-jcp40-c63b724f6d.json:/usr/src/app/spotr-22162-firebase-adminsdk-jcp40-c63b724f6d.json
+    env_file:
+      - .env # Specify the path to your environment file relative to the docker-compose.yml file
+
+volumes:
+  sqlite-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/lib/spaceona-db/data
+      o: bind
+  logs-data:
+    driver: local
+    driver_opts:
+      type: none
+      device: /var/lib/spaceona-db/logs
+      o: bind

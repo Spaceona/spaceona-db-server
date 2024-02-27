@@ -36,7 +36,7 @@ Starts the server and listens for requests on the configured port.
 
 ```env
 # Database Configuration
-DATABASE_URL="file:./database.db"
+DATABASE_URL="file:./data/database.db"
 
 # Authentication Token for Secure Endpoints
 AUTH_TOKEN="your_auth_token_here"
@@ -48,13 +48,15 @@ GOOGLE_APPLICATION_CREDENTIALS="path_to_your_firebase_admin_sdk.json"
 PORT=3000
 ```
 
-# Docker Instructions
+# Deployment
 
-```
-docker build -t spaceona-server .
-```
+Make these folders:
+`/var/lib/spaceona-db/logs`
+`/var/lib/spaceona-db/data`
 
-```
-docker run -d --restart=always -v spaceona-data:/usr/src/app/ -p 80:3000 --name spaceona-db-server spaceona-server
+Copy files to current dir
+One way to do it if you have a .tar.gz for exmaple: `mkdir spaceona-db-server && tar -zxvf ./spaceona-db-server.tar.gz -C spaceona-db-server`
 
-```
+then do
+`chmod +x ./install.sh`
+`./install.sh`
