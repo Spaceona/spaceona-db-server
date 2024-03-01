@@ -52,7 +52,8 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
   const boolStatus = status === "true";
   const machineId = `${school}-${building}-${type}-${id}`;
 
-  const body = await c.req.json(); //get the json body so we can save it to the database
+  // Get the raw body text so we can save it to the database
+  const body = await c.req.text();
 
   // Always log to the database
   const entry = await prisma.machineLog.create({
