@@ -4,7 +4,7 @@ import { saveToLog } from "./logs";
 
 interface AccelerationEntry {
   timestamp: number;
-  accelZ: number;
+  accelY: number;
 }
 
 const accelerationCache: Record<string, AccelerationEntry[]> = {};
@@ -65,10 +65,10 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
   try {
     const json = await c.req.json();
 
-    let accelZ = json.accelerometer.y;
+    let accelY = json.accelerometer.y;
 
     //make it positive
-    accelZ = Math.abs(accelZ);
+    accelY = Math.abs(accelY);
 
     //store an average of the last 30 seconds
     //push to the accelerationCache
@@ -77,7 +77,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
     }
     accelerationCache[machineId].push({
       timestamp: Date.now(),
-      accelZ,
+      accelY: accelY,
     });
 
     //remove entries older than 30 seconds
@@ -89,7 +89,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
     //calculate the average
     const average =
       accelerationCache[machineId].reduce((acc, entry) => {
-        return acc + entry.accelZ;
+        return acc + entry.accelY;
       }, 0) / accelerationCache[machineId].length;
 
     //if the average is above a certain threshold, then the machine is in use
