@@ -1,13 +1,8 @@
 import { Hono } from "hono";
 import { firestoredb, prisma } from ".";
 import { saveToLog } from "./logs";
-
-interface AccelerationEntry {
-  timestamp: number;
-  accelY: number;
-}
-
-const accelerationCache: Record<string, AccelerationEntry[]> = {};
+import { SensorData } from "./detection/SensorData";
+import { GYRO_Y_THRESHOLD, DEBOUNCE_DURATION_MS } from "./detection/simulation";
 
 const app = new Hono();
 
@@ -26,7 +21,13 @@ interface CacheEntry {
   status: boolean; // The last known status
 }
 
+interface DebounceCacheEntry {
+  lastDebounceTime: number;
+  wasRunning: boolean;
+}
+
 const machineCache: Record<string, CacheEntry> = {};
+const debounceCache: Record<string, DebounceCacheEntry> = {};
 
 const CACHE_EXPIRATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
@@ -38,7 +39,6 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
   type = type.toLowerCase();
   status = status.toLowerCase();
 
-  // Shorter NaN check
   if (isNaN(id as any)) {
     return c.text("Invalid ID", 400);
   }
@@ -52,56 +52,41 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
       ? MachineTypeListName.Washer
       : MachineTypeListName.Dryer;
 
-  if (status !== "true" && status !== "false") {
-    return c.text("Invalid status", 400);
-  }
-
-  let boolStatus = status === "true";
   const machineId = `${school}-${building}-${type}-${id}`;
-
-  // Get the raw body text so we can save it to the database
   const body = await c.req.text();
+
+  let boolStatus = false; // Default to false (not running)
 
   try {
     const json = JSON.parse(body);
+    const { gyroscope } = json;
 
-    let accelY = json.accelerometer.y;
+    // Determine if the machine is running based on gyroscope data
+    const currentIsRunning = Math.abs(gyroscope.y) > GYRO_Y_THRESHOLD;
 
-    //make it positive
-    accelY = Math.abs(accelY);
-
-    //store an average of the last 30 seconds
-    //push to the accelerationCache
-    if (!accelerationCache[machineId]) {
-      accelerationCache[machineId] = [];
-    }
-    accelerationCache[machineId].push({
-      timestamp: Date.now(),
-      accelY: accelY,
-    });
-
-    //remove entries older than 30 seconds
-    const thirtySecondsAgo = Date.now() - 30 * 1000;
-    accelerationCache[machineId] = accelerationCache[machineId].filter(
-      (entry) => entry.timestamp > thirtySecondsAgo
-    );
-
-    //calculate the average
-    const average =
-      accelerationCache[machineId].reduce((acc, entry) => {
-        return acc + entry.accelY;
-      }, 0) / accelerationCache[machineId].length;
-
-    //if the average is above a certain threshold, then the machine is in use
-    // if its over 0.066, then the machine is in use
-
-    if (average > 0.066) {
-      boolStatus = true;
-    } else {
-      boolStatus = false;
+    // Debounce logic
+    const now = Date.now();
+    if (!(machineId in debounceCache)) {
+      debounceCache[machineId] = {
+        lastDebounceTime: now,
+        wasRunning: false,
+      };
     }
 
-    console.log("Average:", average);
+    const { lastDebounceTime, wasRunning } = debounceCache[machineId];
+
+    if (
+      currentIsRunning !== wasRunning &&
+      now - lastDebounceTime > DEBOUNCE_DURATION_MS
+    ) {
+      debounceCache[machineId].wasRunning = currentIsRunning;
+      debounceCache[machineId].lastDebounceTime = now;
+      boolStatus = currentIsRunning;
+    } else if (currentIsRunning === wasRunning) {
+      // If the state hasn't changed, update the last debounce time
+      debounceCache[machineId].lastDebounceTime = now;
+      boolStatus = wasRunning;
+    }
   } catch (e) {
     console.log("Error parsing JSON:", e);
   }
@@ -117,14 +102,13 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
 
   saveToLog(JSON.stringify(entry)); // Log the entry
 
-  const now = Date.now();
   const cacheEntry = machineCache[machineId];
 
   // Update Firebase conditionally based on cache expiration and status change
   if (
     !cacheEntry ||
     cacheEntry.status !== boolStatus ||
-    cacheEntry.lastUpdate + CACHE_EXPIRATION < now
+    cacheEntry.lastUpdate + CACHE_EXPIRATION < Date.now()
   ) {
     try {
       const docRef = firestoredb.collection("schools").doc(school);
@@ -136,7 +120,6 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
       }
 
       const machines = buildingData[type];
-      // const machineIndex = machines.findIndex((m: any) => m.id === id);
       const machine = machines[id];
 
       machines[id] = {
@@ -158,7 +141,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
 
       // Update cache with the new status and update time
       machineCache[machineId] = {
-        lastUpdate: now,
+        lastUpdate: Date.now(),
         status: boolStatus,
       };
     } catch (e) {

@@ -1,9 +1,9 @@
 import { SensorData } from "./SensorData";
 
 // Updated constants for threshold, minimum duration, and debounce duration
-const GYRO_Y_THRESHOLD = 0.5; // Lowered threshold to capture more active states
-const MIN_RUNNING_DURATION_MS = 1000; // Minimum duration to consider the machine running
-const DEBOUNCE_DURATION_MS = 15000; // 15 seconds to reduce sensitivity to mid-cycle changes
+export const GYRO_Y_THRESHOLD = 0.5; // Lowered threshold to capture more active states
+export const MIN_RUNNING_DURATION_MS = 1000; // Minimum duration to consider the machine running
+export const DEBOUNCE_DURATION_MS = 35000; // 35 seconds to reduce sensitivity to mid-cycle changes
 
 // Function to simulate and interpret the sensor data
 export async function simulateMachineState(sensorDataArray: SensorData[]) {
@@ -13,6 +13,7 @@ export async function simulateMachineState(sensorDataArray: SensorData[]) {
   let lastTransitionTimestamp = sensorDataArray[0]?.timestamp || 0;
   let debouncedIsRunning = isRunning;
   let lastDebounceTimestamp = lastTransitionTimestamp;
+  let sessionLengths: number[] = []; // Array to store session lengths
 
   let maxGyroY = 0;
   let maxAccMagnitude = 0;
@@ -47,6 +48,14 @@ export async function simulateMachineState(sensorDataArray: SensorData[]) {
       if (currentTime - lastDebounceTimestamp > DEBOUNCE_DURATION_MS) {
         debouncedIsRunning = currentIsRunning;
         lastDebounceTimestamp = currentTime;
+        if (!isRunning && currentIsRunning) {
+          // Start of a new session
+          lastTransitionTimestamp = currentTime;
+        } else if (isRunning && !currentIsRunning) {
+          // End of a session
+          const sessionLength = currentTime - lastTransitionTimestamp;
+          sessionLengths.push(sessionLength);
+        }
       }
     } else {
       lastDebounceTimestamp = data.timestamp;
@@ -120,6 +129,36 @@ export async function simulateMachineState(sensorDataArray: SensorData[]) {
   console.log(
     `75th Percentile Accelerometer Magnitude: ${accMag75th.toFixed(2)}`
   );
+
+  // Print session lengths
+  console.log("Session Lengths:");
+  sessionLengths.forEach((length, index) => {
+    console.log(
+      `Session ${index + 1}: ${convertToHoursMinutes(length).hours} hours and ${
+        convertToHoursMinutes(length).minutes
+      } minutes`
+    );
+  });
+
+  return {
+    // Return necessary data
+    totalDuration,
+    runningDuration,
+    runningPercentage,
+    transitions,
+    maxGyroY,
+    maxAccMagnitude,
+    averageGyroY,
+    averageAccMagnitude,
+    dataPoints,
+    gyroY25th,
+    gyroY50th,
+    gyroY75th,
+    accMag25th,
+    accMag50th,
+    accMag75th,
+    sessionLengths,
+  };
 }
 
 // Function to calculate percentiles (assuming you have this implemented)
