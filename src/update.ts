@@ -2,7 +2,7 @@ import { Hono } from "hono";
 import { firestoredb, prisma } from ".";
 import { saveToLog } from "./logs";
 import { SensorData } from "./detection/SensorData";
-import { GYRO_Y_THRESHOLD, DEBOUNCE_DURATION_MS } from "./detection/simulation";
+import { checkMachineRunning } from "./detection/isRunning";
 
 const app = new Hono();
 
@@ -21,13 +21,7 @@ interface CacheEntry {
   status: boolean; // The last known status
 }
 
-interface DebounceCacheEntry {
-  lastDebounceTime: number;
-  wasRunning: boolean;
-}
-
 const machineCache: Record<string, CacheEntry> = {};
-const debounceCache: Record<string, DebounceCacheEntry> = {};
 
 const CACHE_EXPIRATION = 30 * 60 * 1000; // 30 minutes in milliseconds
 
@@ -59,34 +53,14 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
 
   try {
     const json = JSON.parse(body);
-    const { gyroscope } = json;
+    const { accelerometer, gyroscope } = json;
+    const sensorData: SensorData = {
+      timestamp: Date.now(),
+      accelerometer,
+      gyroscope,
+    };
 
-    // Determine if the machine is running based on gyroscope data
-    const currentIsRunning = Math.abs(gyroscope.y) > GYRO_Y_THRESHOLD;
-
-    // Debounce logic
-    const now = Date.now();
-    if (!(machineId in debounceCache)) {
-      debounceCache[machineId] = {
-        lastDebounceTime: now,
-        wasRunning: false,
-      };
-    }
-
-    const { lastDebounceTime, wasRunning } = debounceCache[machineId];
-
-    if (
-      currentIsRunning !== wasRunning &&
-      now - lastDebounceTime > DEBOUNCE_DURATION_MS
-    ) {
-      debounceCache[machineId].wasRunning = currentIsRunning;
-      debounceCache[machineId].lastDebounceTime = now;
-      boolStatus = currentIsRunning;
-    } else if (currentIsRunning === wasRunning) {
-      // If the state hasn't changed, update the last debounce time
-      debounceCache[machineId].lastDebounceTime = now;
-      boolStatus = wasRunning;
-    }
+    boolStatus = checkMachineRunning(machineId, sensorData);
   } catch (e) {
     console.log("Error parsing JSON:", e);
   }
