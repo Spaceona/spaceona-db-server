@@ -2,6 +2,13 @@ import { Hono } from "hono";
 import { firestoredb, prisma } from ".";
 import { saveToLog } from "./logs";
 
+interface AccelerationEntry {
+  timestamp: number;
+  accelZ: number;
+}
+
+const accelerationCache: Record<string, AccelerationEntry[]> = {};
+
 const app = new Hono();
 
 enum MachineType {
@@ -49,11 +56,51 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
     return c.text("Invalid status", 400);
   }
 
-  const boolStatus = status === "true";
+  let boolStatus = status === "true";
   const machineId = `${school}-${building}-${type}-${id}`;
 
   // Get the raw body text so we can save it to the database
   const body = await c.req.text();
+
+  try {
+    const json = await c.req.json();
+
+    let accelZ = json.accelerometer.y;
+
+    //make it positive
+    accelZ = Math.abs(accelZ);
+
+    //store an average of the last 30 seconds
+    //push to the accelerationCache
+    if (!accelerationCache[machineId]) {
+      accelerationCache[machineId] = [];
+    }
+    accelerationCache[machineId].push({
+      timestamp: Date.now(),
+      accelZ,
+    });
+
+    //remove entries older than 30 seconds
+    const thirtySecondsAgo = Date.now() - 30 * 1000;
+    accelerationCache[machineId] = accelerationCache[machineId].filter(
+      (entry) => entry.timestamp > thirtySecondsAgo
+    );
+
+    //calculate the average
+    const average =
+      accelerationCache[machineId].reduce((acc, entry) => {
+        return acc + entry.accelZ;
+      }, 0) / accelerationCache[machineId].length;
+
+    //if the average is above a certain threshold, then the machine is in use
+    // if its over 0.08, then the machine is in use
+
+    if (average > 0.08) {
+      boolStatus = true;
+    } else {
+      boolStatus = false;
+    }
+  } catch (e) {}
 
   // Always log to the database
   const entry = await prisma.machineLog.create({
