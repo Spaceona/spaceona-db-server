@@ -277,4 +277,75 @@ app.get("/hourly", async (c) => {
   return c.html(html);
 });
 
+app.get("/:id", async (c) => {
+  const { id } = c.req.param();
+  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+
+  const machineLogs = await prisma.machineLog.findMany({
+    where: {
+      machineId: id,
+      timestamp: {
+        gte: sixHoursAgo,
+      },
+    },
+    orderBy: {
+      timestamp: "asc",
+    },
+    select: {
+      timestamp: true,
+      isInUse: true,
+    },
+  });
+
+  // Prepare data for the graph
+  const labels = machineLogs.map((log) => log.timestamp.toISOString());
+  const data = machineLogs.map((log) => (log.isInUse ? 1 : 0));
+
+  // Generate HTML with embedded JavaScript
+  const htmlContent = `
+    <html>
+      <head>
+        <title>Machine Usage Graph</title>
+        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+        <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+      </head>
+      <body class="bg-gray-100 p-8">
+        <div class="max-w-4xl mx-auto">
+          <h1 class="text-2xl font-bold text-center mb-4">Machine Usage Graph</h1>
+          <h2 class="text-xl text-center mb-8">Machine ID: ${id}</h2>
+          <div class="bg-white p-6 rounded-lg shadow">
+            <canvas id="usageGraph"></canvas>
+          </div>
+        </div>
+        <script>
+          var ctx = document.getElementById('usageGraph').getContext('2d');
+          var usageGraph = new Chart(ctx, {
+            type: 'line',
+            data: {
+              labels: ${JSON.stringify(labels)},
+              datasets: [{
+                label: 'Machine Usage',
+                data: ${JSON.stringify(data)},
+                borderColor: 'rgb(59, 130, 246)', // Tailwind's blue-500
+                backgroundColor: 'rgba(59, 130, 246, 0.5)', // Light blue background
+                borderWidth: 2,
+                tension: 0.1
+              }]
+            },
+            options: {
+              scales: {
+                y: {
+                  beginAtZero: true
+                }
+              }
+            }
+          });
+        </script>
+      </body>
+    </html>
+  `;
+
+  return c.html(htmlContent);
+});
+
 export default app;
