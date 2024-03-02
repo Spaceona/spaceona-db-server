@@ -93,9 +93,9 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
       }, 0) / accelerationCache[machineId].length;
 
     //if the average is above a certain threshold, then the machine is in use
-    // if its over 0.08, then the machine is in use
+    // if its over 0.066, then the machine is in use
 
-    if (average > 0.08) {
+    if (average > 0.066) {
       boolStatus = true;
     } else {
       boolStatus = false;
