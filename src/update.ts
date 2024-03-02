@@ -63,7 +63,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
   const body = await c.req.text();
 
   try {
-    const json = await c.req.json();
+    const json = JSON.parse(body);
 
     let accelY = json.accelerometer.y;
 
@@ -100,7 +100,11 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
     } else {
       boolStatus = false;
     }
-  } catch (e) {}
+
+    console.log("Average:", average);
+  } catch (e) {
+    console.log("Error parsing JSON:", e);
+  }
 
   // Always log to the database
   const entry = await prisma.machineLog.create({
