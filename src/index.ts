@@ -16,7 +16,7 @@ export const prisma = new PrismaClient();
 const app = new Hono();
 
 app.get("/", (c) => {
-  return c.text("Spaceona 1.1.2");
+  return c.text("Spaceona 1.1.3");
 });
 
 app.route("/update", data);

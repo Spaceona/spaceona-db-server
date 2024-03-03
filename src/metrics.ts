@@ -279,13 +279,16 @@ app.get("/hourly", async (c) => {
 
 app.get("/:id", async (c) => {
   const { id } = c.req.param();
-  const sixHoursAgo = new Date(Date.now() - 6 * 60 * 60 * 1000);
+
+  const hours: number = Number(c.req.query("hours")) || 6;
+
+  const timeCutoff = new Date(Date.now() - hours * 60 * 60 * 1000);
 
   const machineLogs = await prisma.machineLog.findMany({
     where: {
       machineId: id,
       timestamp: {
-        gte: sixHoursAgo,
+        gte: timeCutoff,
       },
     },
     orderBy: {
