@@ -174,12 +174,31 @@ const formatSeconds = (totalSeconds: number): string => {
   return `${hours}h ${minutes}m ${seconds}s`;
 };
 
+interface Session {
+  start: Date;
+  end: Date;
+  machineId: string;
+  duration: number;
+}
+
+// Helper function to format session start and end times
+function formatSessionTime(date: Date): string {
+  return date.toLocaleTimeString();
+}
+
+// Helper function to calculate and format session duration in minutes
+function formatSessionDuration(duration: number): string {
+  return `${(duration / (1000 * 60)).toFixed(0)} minutes`;
+}
+
 app.get("/hourly", async (c) => {
-  const startDate = new Date("2024-02-01T00:00:00Z");
+  const hours: number = Number(c.req.query("hours")) || 24;
+
+  const oneMonthAgo = new Date(Date.now() - hours * 60 * 60 * 1000);
   const machineLogs: MachineLog[] = await prisma.machineLog.findMany({
     where: {
       timestamp: {
-        gt: startDate,
+        gt: oneMonthAgo,
       },
     },
     orderBy: {
@@ -187,93 +206,92 @@ app.get("/hourly", async (c) => {
     },
   });
 
-  const tempResults: TempResults = {};
+  const sessions: Session[] = [];
+  let sessionStart: MachineLog | null = null;
 
-  machineLogs.forEach((log, index) => {
-    const machineId = log.machineId;
-    const timestamp = new Date(log.timestamp);
-    const date = timestamp.toISOString().split("T")[0];
-    const hour = timestamp.getHours().toString();
-
-    if (!tempResults[machineId]) {
-      tempResults[machineId] = {};
-    }
-    if (!tempResults[machineId][date]) {
-      tempResults[machineId][date] = {};
-    }
-    if (!tempResults[machineId][date][hour]) {
-      tempResults[machineId][date][hour] = {
-        totalSeconds: 0,
-        switchCount: 0,
-        datapoints: 0,
-      }; // Initialize datapoints
-    }
-
-    // Increment datapoints for each log
-    tempResults[machineId][date][hour].datapoints += 1;
-
-    // Count status switches
-    if (index > 0) {
-      const prevLog = machineLogs[index - 1];
-      if (prevLog.machineId === machineId && prevLog.isInUse !== log.isInUse) {
-        tempResults[machineId][date][hour].switchCount += 1;
-      }
-    }
-
-    // Calculate active time
-    if (
-      log.isInUse &&
-      index + 1 < machineLogs.length &&
-      machineLogs[index + 1].machineId === machineId &&
-      !machineLogs[index + 1].isInUse
-    ) {
-      const nextTimestamp = new Date(machineLogs[index + 1].timestamp);
-      const diffSeconds =
-        (nextTimestamp.getTime() - timestamp.getTime()) / 1000;
-      tempResults[machineId][date][hour].totalSeconds += diffSeconds;
+  machineLogs.forEach((log) => {
+    if (!sessionStart && log.isInUse) {
+      sessionStart = log;
+    } else if (sessionStart && !log.isInUse) {
+      sessions.push({
+        start: sessionStart.timestamp,
+        end: log.timestamp,
+        machineId: sessionStart.machineId,
+        duration: log.timestamp.getTime() - sessionStart.timestamp.getTime(),
+      });
+      sessionStart = null;
     }
   });
 
-  // Transform tempResults to the desired output structure and format, including datapoints
-  const results = Object.fromEntries(
-    Object.entries(tempResults).map(([machineId, dates]) => [
-      machineId,
-      Object.fromEntries(
-        Object.entries(dates).map(([date, hours]) => [
-          date,
-          Object.fromEntries(
-            Object.entries(hours).map(([hour, data]) => [
-              hour,
-              {
-                activeTime: formatSeconds(data.totalSeconds),
-                switchCount: data.switchCount,
-                datapoints: data.datapoints, // Include datapoints in the final results
-              },
-            ])
-          ),
-        ])
-      ),
-    ])
-  );
-
-  // Generate HTML content, including a column for datapoints
-  let html =
-    "<!DOCTYPE html><html><head><title>Hourly Active Times, Status Switches, and Datapoints</title><style>body { font-family: Arial, sans-serif; } table { width: 100%; border-collapse: collapse; } th, td { border: 1px solid #ddd; padding: 8px; text-align: left; } th { background-color: #f2f2f2; }</style></head><body><h1>Machine Hourly Active Times, Status Switch Counts, and Datapoints</h1>";
-
-  for (const [machineId, dates] of Object.entries(results)) {
-    html += `<h2>Machine ID: ${machineId}</h2>`;
-    for (const [date, hours] of Object.entries(dates)) {
-      html += `<h3>Date: ${date}</h3>`;
-      html +=
-        "<table><tr><th>Hour</th><th>Active Time</th><th>Status Switch Count</th><th>Datapoints</th></tr>"; // Add Datapoints header
-      for (const [hour, data] of Object.entries(hours)) {
-        html += `<tr><td>${hour}</td><td>${data.activeTime}</td><td>${data.switchCount}</td><td>${data.datapoints}</td></tr>`; // Include datapoints data
-      }
-      html += "</table><br>";
+  // Group sessions by day and then by machineId
+  const sessionsByDayAndMachine: Record<
+    string,
+    Record<string, Session[]>
+  > = sessions.reduce((acc, session) => {
+    const startDate = session.start.toLocaleDateString();
+    if (!acc[startDate]) {
+      acc[startDate] = {};
     }
-  }
+    if (!acc[startDate][session.machineId]) {
+      acc[startDate][session.machineId] = [];
+    }
+    acc[startDate][session.machineId].push(session);
+    return acc;
+  }, {} as Record<string, Record<string, Session[]>>);
 
-  html += "</body></html>";
+  // Generate HTML with Tailwind CSS
+  let html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Hourly Machine Usage</title>
+      <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+    </head>
+    <body class="bg-gray-100">
+      <div class="max-w-6xl mx-auto py-8">
+        <h1 class="text-3xl font-bold text-center mb-6">Machine Sessions Over the Last ${hours} Hours</h1>
+        ${Object.entries(sessionsByDayAndMachine)
+          .map(
+            ([date, machines]) => `
+            <div class="mb-8">
+              <h2 class="text-xl font-semibold mb-4">${date}</h2>
+              ${Object.entries(machines)
+                .map(
+                  ([machineId, sessions]) => `
+                  <div class="bg-white shadow overflow-hidden sm:rounded-lg mb-4">
+                    <div class="px-4 py-5 sm:px-6 border-b">
+                      <h3 class="text-lg leading-6 font-medium text-gray-900">Machine ${machineId}</h3>
+                    </div>
+                    <ul class="divide-y divide-gray-200">
+                      ${sessions
+                        .map(
+                          (session) => `
+                          <li class="px-4 py-4 sm:px-6">
+                            In use from ${formatSessionTime(
+                              session.start
+                            )} to ${formatSessionTime(
+                            session.end
+                          )} - Duration: ${formatSessionDuration(
+                            session.duration
+                          )}
+                          </li>
+                        `
+                        )
+                        .join("")}
+                    </ul>
+                  </div>
+                `
+                )
+                .join("")}
+            </div>
+          `
+          )
+          .join("")}
+      </div>
+    </body>
+    </html>
+  `;
+
   return c.html(html);
 });
 
@@ -309,7 +327,7 @@ app.get("/:id", async (c) => {
     <html>
       <head>
         <title>Machine Usage Graph</title>
-        <link href="https://cdn.jsdelivr.net/npm/tailwindcss@2.2.19/dist/tailwind.min.css" rel="stylesheet">
+        <script src="https://cdn.tailwindcss.com"></script>
         <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
       </head>
       <body class="bg-gray-100 p-8">
