@@ -21,6 +21,17 @@ interface CacheEntry {
   status: boolean; // The last known status
 }
 
+interface Machine {
+  school: string;
+  building: string;
+  type: string;
+  id: string;
+}
+
+function getMachineIDString({ school, building, type, id }: Machine): string {
+  return `${school}-${building}-${type}-${id}`;
+}
+
 const machineCache: Record<string, CacheEntry> = {};
 
 const CACHE_EXPIRATION = 30 * 60 * 1000; // 30 minutes in milliseconds
@@ -31,6 +42,9 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
   school = school.toLowerCase();
   building = building.toLowerCase();
   type = type.toLowerCase();
+
+  const machine: Machine = { school, building, type, id };
+
   status = status.toLowerCase();
 
   if (isNaN(id as any)) {
@@ -46,7 +60,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
       ? MachineTypeListName.Washer
       : MachineTypeListName.Dryer;
 
-  const machineId = `${school}-${building}-${type}-${id}`;
+  const machineId = getMachineIDString({ school, building, type, id });
   const body = await c.req.text();
 
   let boolStatus = false; // Default to false (not running)
