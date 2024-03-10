@@ -77,6 +77,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
     boolStatus = checkMachineRunning(machineId, sensorData);
   } catch (e) {
     console.log("Error parsing JSON:", e);
+    return c.text("Error parsing JSON", 400);
   }
 
   // Always log to the database
