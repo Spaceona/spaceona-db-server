@@ -16,3 +16,8 @@ export interface SensorData {
   accelerometer: AccelerometerData;
   gyroscope: GyroscopeData;
 }
+
+export interface BodyData {
+  accelerometer: AccelerometerData;
+  gyroscope: GyroscopeData;
+}

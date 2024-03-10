@@ -5,6 +5,7 @@ import { applicationDefault, initializeApp } from "firebase-admin/app";
 import { firestore } from "firebase-admin";
 import metrics from "./metrics";
 import data from "./update";
+import dump from "./dump";
 
 const firebaseapp = initializeApp({
   credential: applicationDefault(),
@@ -21,6 +22,7 @@ app.get("/", (c) => {
 
 app.route("/update", data);
 app.route("/metrics", metrics);
+app.route("/dump", dump);
 
 const port = (process.env.PORT as unknown as number) || 3000;
 
