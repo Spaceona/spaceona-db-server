@@ -55,7 +55,7 @@ app.get("/:machineid", async (c) => {
       },
     },
     orderBy: {
-      timestamp: "desc",
+      timestamp: "asc",
     },
   });
 
