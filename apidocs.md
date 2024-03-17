@@ -27,6 +27,7 @@ Example: `?token=TOKEN`
   - `:machineid` - The unique identifier for the machine.
 - **Query Parameters**:
   - `token` - Your authentication token.
+  - `hours` - The number of hours to include
 
 ### Get Metrics by Machine ID
 
@@ -36,6 +37,7 @@ Example: `?token=TOKEN`
   - `:machineid` - The unique identifier for the machine.
 - **Query Parameters**:
   - `token` - Your authentication token.
+  - `hours` - The number of hours to include
 
 ### Get Hourly Metrics
 
@@ -43,6 +45,7 @@ Example: `?token=TOKEN`
 - **Description**: Retrieve metrics on an hourly basis for all machines.
 - **Query Parameters**:
   - `token` - Your authentication token.
+  - `hours` - The number of hours to include
 
 ### Get All Metrics
 
@@ -50,6 +53,7 @@ Example: `?token=TOKEN`
 - **Description**: Fetch all available metrics.
 - **Query Parameters**:
   - `token` - Your authentication token.
+  - `hours` - The number of hours to include
 
 ### Update Sensor Data
 
