@@ -17,7 +17,8 @@ enum MachineTypeListName {
 }
 
 interface CacheEntry {
-  lastUpdate: number; // Tracks the last update time for cache
+  lastUpdate: number; // Tracks the last update time in cache
+  lastFirebaseUpdate: number; // Tracks the last Firebase update time
   status: boolean; // The last known status
 }
 
@@ -35,6 +36,7 @@ function getMachineIDString({ school, building, type, id }: Machine): string {
 const machineCache: Record<string, CacheEntry> = {};
 
 const CACHE_EXPIRATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+const FIREBASE_UPDATE_LIMIT = 60 * 1000; // 1 minute in milliseconds
 
 app.post("/:school/:building/:type/:id/:status", async (c) => {
   let { school, building, type, id, status } = c.req.param();
@@ -63,7 +65,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
   const machineId = getMachineIDString({ school, building, type, id });
   const body = await c.req.text();
 
-  let boolStatus = false; // Default to false (not running)
+  let boolStatus = false;
 
   try {
     const json = JSON.parse(body);
@@ -80,7 +82,6 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
     return c.text("Error parsing JSON", 400);
   }
 
-  // Always log to the database
   const entry = await prisma.machineLog.create({
     data: {
       machineId,
@@ -89,16 +90,26 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
     },
   });
 
-  saveToLog(JSON.stringify(entry)); // Log the entry
+  saveToLog(JSON.stringify(entry));
 
   const cacheEntry = machineCache[machineId];
+  const now = Date.now();
 
-  // Update Firebase conditionally based on cache expiration and status change
-  if (
-    !cacheEntry ||
-    cacheEntry.status !== boolStatus ||
-    cacheEntry.lastUpdate + CACHE_EXPIRATION < Date.now()
-  ) {
+  if (!cacheEntry) {
+    machineCache[machineId] = {
+      lastUpdate: now,
+      lastFirebaseUpdate: now - FIREBASE_UPDATE_LIMIT, // Initialize to allow immediate update
+      status: boolStatus,
+    };
+  }
+
+  const shouldUpdateFirebase = cacheEntry
+    ? boolStatus !== cacheEntry.status
+      ? now - cacheEntry.lastFirebaseUpdate >= FIREBASE_UPDATE_LIMIT
+      : now - cacheEntry.lastUpdate >= CACHE_EXPIRATION
+    : true;
+
+  if (shouldUpdateFirebase) {
     try {
       const docRef = firestoredb.collection("schools").doc(school);
       const doc = await docRef.get();
@@ -117,27 +128,25 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
         lastUpdated: entry.timestamp,
       };
 
-      // Update the building data
       buildingData[type] = machines;
 
-      // Update the buildings array in the document
       const updatedBuildings = buildingsData.map((b: any) =>
         b.id === building ? buildingData : b
       );
 
-      // Update the document in Firestore
       await docRef.update({ buildings: updatedBuildings });
 
-      // Update cache with the new status and update time
-      machineCache[machineId] = {
-        lastUpdate: Date.now(),
-        status: boolStatus,
-      };
+      // Update cache with new Firebase update time and status
+      machineCache[machineId].lastFirebaseUpdate = now;
+      machineCache[machineId].status = boolStatus;
     } catch (e) {
       console.log("Error updating Firebase:", e);
       return c.text("Error updating Firebase", 500);
     }
   }
+
+  // Update the last cache update time regardless of Firebase update
+  machineCache[machineId].lastUpdate = now;
 
   return c.text("OK", 200);
 });
