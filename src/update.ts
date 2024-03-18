@@ -103,11 +103,16 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
     };
   }
 
-  const shouldUpdateFirebase = cacheEntry
-    ? boolStatus !== cacheEntry.status
-      ? now - cacheEntry.lastFirebaseUpdate >= FIREBASE_UPDATE_LIMIT
-      : now - cacheEntry.lastUpdate >= CACHE_EXPIRATION
-    : true;
+  let shouldUpdateFirebase = true;
+
+  if (cacheEntry) {
+    if (boolStatus !== cacheEntry.status) {
+      shouldUpdateFirebase =
+        now - cacheEntry.lastFirebaseUpdate >= FIREBASE_UPDATE_LIMIT;
+    } else {
+      shouldUpdateFirebase = now - cacheEntry.lastUpdate >= CACHE_EXPIRATION;
+    }
+  }
 
   if (shouldUpdateFirebase) {
     try {
