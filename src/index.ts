@@ -14,6 +14,16 @@ const firebaseapp = initializeApp({
 export const firestoredb = firestore();
 export const prisma = new PrismaClient();
 
+let firebasereadcount = 0;
+
+export function incFirebasereadcount() {
+  firebasereadcount++;
+}
+
+setInterval(() => {
+  console.log(`Total Firestore reads since server start: ${firebasereadcount}`);
+}, 10000);
+
 const app = new Hono();
 
 app.get("/", (c) => {

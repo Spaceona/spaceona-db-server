@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { firestoredb, prisma } from ".";
+import { firestoredb, incFirebasereadcount, prisma } from ".";
 import { saveToLog } from "./logs";
 import { SensorData } from "./detection/SensorData";
 import { checkMachineRunning } from "./detection/isRunning";
@@ -116,6 +116,12 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
 
   if (shouldUpdateFirebase) {
     try {
+      // Update cache with new Firebase update time and status before the read so we still update even if we error
+      machineCache[machineId].lastFirebaseUpdate = now;
+      machineCache[machineId].status = boolStatus;
+
+      incFirebasereadcount();
+
       const docRef = firestoredb.collection("schools").doc(school);
       const doc = await docRef.get();
       const buildingsData = doc.data()?.buildings;
@@ -140,10 +146,6 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
       );
 
       await docRef.update({ buildings: updatedBuildings });
-
-      // Update cache with new Firebase update time and status
-      machineCache[machineId].lastFirebaseUpdate = now;
-      machineCache[machineId].status = boolStatus;
     } catch (e) {
       console.log("Error updating Firebase:", e);
       return c.text("Error updating Firebase", 500);
