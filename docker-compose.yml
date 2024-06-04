@@ -11,7 +11,7 @@ services:
       - ./spotr-22162-firebase-adminsdk-jcp40-c63b724f6d.json:/usr/src/app/spotr-22162-firebase-adminsdk-jcp40-c63b724f6d.json
     env_file:
       - .env # Specify the path to your environment file relative to the docker-compose.yml file
-
+    restart: always
 volumes:
   sqlite-data:
     driver: local

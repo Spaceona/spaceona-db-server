@@ -65,5 +65,13 @@ Copy files to current dir
 One way to do it if you have a .tar.gz for exmaple: `mkdir spaceona-db-server && tar -zxvf ./spaceona-db-server.tar.gz -C spaceona-db-server`
 
 then do
-`chmod +x ./install.sh`
-`./install.sh`
+`chmod +x ./scripts/install.sh` only on first run
+`.scripts/install.sh`
+
+To stop the server:
+`chmod +x ./scripts/stop.sh` only on first run
+`.scripts/stop.sh`
+
+To start the server:
+`chmod +x ./scripts/start.sh` only on first run
+`.scripts/start.sh` every time you want to start the server (install also starts the server so you don't need to run this)
