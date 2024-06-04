@@ -66,12 +66,22 @@ One way to do it if you have a .tar.gz for exmaple: `mkdir spaceona-db-server &&
 
 then do
 `chmod +x ./scripts/install.sh` only on first run
+
 `.scripts/install.sh`
 
 To stop the server:
 `chmod +x ./scripts/stop.sh` only on first run
+
 `.scripts/stop.sh`
 
 To start the server:
 `chmod +x ./scripts/start.sh` only on first run
+
 `.scripts/start.sh` every time you want to start the server (install also starts the server so you don't need to run this)
+
+To update deployment:
+`git pull`
+
+`chmod +x ./scripts/install.sh` only on first run
+
+`.scripts/install.sh`
