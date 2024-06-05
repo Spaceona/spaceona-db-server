@@ -1,5 +1,5 @@
 import { Hono } from "hono";
-import { firestoredb, incFirebasereadcount, prisma } from ".";
+import { firestoredb, prisma } from ".";
 import { saveToLog } from "./logs";
 import { SensorData } from "./detection/SensorData";
 import { checkMachineRunning } from "./detection/isRunning";
@@ -119,8 +119,6 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
       // Update cache with new Firebase update time and status before the read so we still update even if we error
       machineCache[machineId].lastFirebaseUpdate = now;
       machineCache[machineId].status = boolStatus;
-
-      incFirebasereadcount();
 
       const docRef = firestoredb.collection("schools").doc(school);
       const doc = await docRef.get();
