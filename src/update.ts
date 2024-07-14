@@ -89,7 +89,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
       body: JSON.stringify(body),
     },
   });
-
+  console.log(JSON.stringify(entry));
   saveToLog(JSON.stringify(entry));
 
   const cacheEntry = machineCache[machineId];
