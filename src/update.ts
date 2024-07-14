@@ -35,7 +35,7 @@ function getMachineIDString({ school, building, type, id }: Machine): string {
 
 const machineCache: Record<string, CacheEntry> = {};
 
-const CACHE_EXPIRATION = 30 * 60 * 1000; // 30 minutes in milliseconds
+const CACHE_EXPIRATION = 1 * 60 * 1000; // 30 minutes in milliseconds
 const FIREBASE_UPDATE_LIMIT = 60 * 1000; // 1 minute in milliseconds
 
 app.post("/:school/:building/:type/:id/:status", async (c) => {
