@@ -106,12 +106,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
   let shouldUpdateFirebase = true;
 
   if (cacheEntry) {
-    if (boolStatus !== cacheEntry.status) {
-      shouldUpdateFirebase =
-        now - cacheEntry.lastFirebaseUpdate >= FIREBASE_UPDATE_LIMIT;
-    } else {
-      shouldUpdateFirebase = now - cacheEntry.lastUpdate >= CACHE_EXPIRATION;
-    }
+    shouldUpdateFirebase = now - cacheEntry.lastUpdate >= CACHE_EXPIRATION;
   }
 
   if (shouldUpdateFirebase) {
