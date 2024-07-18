@@ -1,5 +1,5 @@
 # Stage 1: Build Stage
-FROM node:18 AS builder
+FROM node:22 AS builder
 
 # Set working directory
 WORKDIR /usr/src/app
@@ -23,10 +23,7 @@ COPY . .
 RUN npm run build
 
 # Stage 2: Production Stage
-FROM node:18-slim AS production
-
-# Install OpenSSL
-RUN apt-get update && apt-get install -y openssl
+FROM node:22 AS production
 
 # Set working directory
 WORKDIR /usr/src/app
