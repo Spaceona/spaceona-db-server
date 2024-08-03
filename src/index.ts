@@ -20,6 +20,10 @@ app.get("/", (c) => {
   return c.text("Spaceona 1.1.6");
 });
 
+app.get("/test", (c) => {
+  return c.text("Spaceona Server Online");
+});
+
 app.route("/update", data);
 app.route("/metrics", metrics);
 app.route("/dump", dump);
