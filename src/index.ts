@@ -6,6 +6,7 @@ import { firestore } from "firebase-admin";
 import metrics from "./metrics";
 import data from "./update";
 import dump from "./dump";
+import firmware from "./firmware";
 
 const firebaseapp = initializeApp({
   credential: applicationDefault(),
@@ -27,6 +28,7 @@ app.get("/test", (c) => {
 app.route("/update", data);
 app.route("/metrics", metrics);
 app.route("/dump", dump);
+app.route("/firmware", firmware);
 
 const port = (process.env.PORT as unknown as number) || 3000;
 
