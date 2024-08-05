@@ -4,7 +4,7 @@ import { authMiddleware } from "./auth";
 
 const app = new Hono();
 
-app.use(authMiddleware);
+app.use("*",authMiddleware);
 
 // First API route: Daily summary
 app.get("/", async (c) => {

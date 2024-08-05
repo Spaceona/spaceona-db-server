@@ -6,14 +6,7 @@ import { authMiddleware } from "./auth";
 
 const app = new Hono();
 
-app.use(async (c: Context, next: Next) => {
-    const token = c.req.query("token");
-    console.log("Hit middleware!");
-    if (!process.env.AUTH_TOKEN || token !== process.env.AUTH_TOKEN) {
-        return c.text("Unauthorized", 401);
-    }
-    await next();
-})
+app.use("*",authMiddleware);
 app.get('/latest', async (context) => {
     //console.log(await getAllVersions(path.join(__dirname, "../firmware")));
     //console.log(getLatestVersions(await getAllVersions(path.join(__dirname, "../firmware"))));
