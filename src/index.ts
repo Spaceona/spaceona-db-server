@@ -1,6 +1,6 @@
 import { serve } from "@hono/node-server";
 import { Hono } from "hono";
-// import { PrismaClient } from "@prisma/client";
+import { PrismaClient } from "@prisma/client";
 import { applicationDefault, initializeApp } from "firebase-admin/app";
 import { firestore } from "firebase-admin";
 import metrics from "./metrics";
@@ -14,7 +14,7 @@ const firebaseapp = initializeApp({
 });
 
 export const firestoredb = firestore();
-// export const prisma = new PrismaClient();
+export const prisma = new PrismaClient();
 
 const app = new Hono();
 
