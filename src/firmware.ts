@@ -1,17 +1,50 @@
-import { Hono } from "hono";
-import {lstat, readdir} from 'node:fs/promises';
+import {Context, Hono, Next} from "hono";
+import { stream, streamText, streamSSE } from 'hono/streaming'
+import {lstat, readdir, readFile} from 'node:fs/promises';
 import * as path from "node:path";
+import { authMiddleware } from "./auth";
 
-const route = new Hono();
+const app = new Hono();
 
-route.get('/latest', async (context) => {
+app.use(async (c: Context, next: Next) => {
+    const token = c.req.query("token");
+    console.log("Hit middleware!");
+    if (!process.env.AUTH_TOKEN || token !== process.env.AUTH_TOKEN) {
+        return c.text("Unauthorized", 401);
+    }
+    await next();
+})
+app.get('/latest', async (context) => {
     //console.log(await getAllVersions(path.join(__dirname, "../firmware")));
     //console.log(getLatestVersions(await getAllVersions(path.join(__dirname, "../firmware"))));
     const allVersions = await getAllVersions(path.join(__dirname, "../firmware"));
     return context.json({version:getLatestVersions(allVersions)});
 });
-route.get('/file/:version', async (context) => {
-
+app.get('/file/:version{^\\d+(-\\d+){2}$}', async (context) => {
+    const version = context.req.param("version");
+    console.log(version);
+    const versionArray:string[] = version.split("-");
+    const majorVersion = versionArray[0];
+    const minorVersion = versionArray[1];
+    const hotfixVersion = versionArray[2];
+    const firmwareFolder = path.join(__dirname, "../firmware");
+    const majorVersionPath = path.join(firmwareFolder, majorVersion);
+    if(!(await lstat(majorVersionPath)).isDirectory()) {
+        context.status(400);
+        context.json({error: "Firmware not found"});
+    }
+    const dirResults = await readdir(majorVersionPath);
+    const firmwareName = version + ".bin";
+    if(!dirResults.includes(firmwareName)){
+        context.status(400);
+        context.json({error: "Firmware not found"});
+    }
+    const data = await readFile(path.join(majorVersionPath, firmwareName));
+    context.header("Content-Type","application/octet-stream");
+    context.header("Content-Length",data.length.toString());
+    return stream(context, async (stream) => {
+        await stream.write(data);
+    })
 });
 
 async function getAllVersions(basePath: string) {
@@ -55,4 +88,4 @@ function getLatestVersions(versions:string[]) {
 
 
 
-export default route;
+export default app;
