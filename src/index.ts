@@ -5,9 +5,10 @@ import { applicationDefault, initializeApp } from "firebase-admin/app";
 import { firestore } from "firebase-admin";
 import metrics from "./metrics";
 import data from "./update";
+import updateRoute from "./updateOnOff";
 import dump from "./dump";
 import firmware from "./firmware";
-import {authRoute} from "./auth";
+import authRoute from "./auth/authRoutes";
 
 const firebaseapp = initializeApp({
   credential: applicationDefault(),
@@ -34,7 +35,8 @@ app.get("/test", (c) => {
 });
 
 app.route("/auth", authRoute);
-app.route("/update", data);
+app.route("/deprecated/update", data);
+app.route("/update", updateRoute);
 app.route("/metrics", metrics);
 app.route("/dump", dump);
 app.route("/firmware", firmware);

@@ -29,6 +29,8 @@ interface Machine {
   id: string;
 }
 
+
+
 function getMachineIDString({ school, building, type, id }: Machine): string {
   return `${school}-${building}-${type}-${id}`;
 }
@@ -58,9 +60,9 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
   }
 
   type =
-    type === MachineType.Washer
-      ? MachineTypeListName.Washer
-      : MachineTypeListName.Dryer;
+      type === MachineType.Washer
+          ? MachineTypeListName.Washer
+          : MachineTypeListName.Dryer;
 
   const machineId = getMachineIDString({ school, building, type, id });
   const body = await c.req.text();
@@ -135,7 +137,7 @@ app.post("/:school/:building/:type/:id/:status", async (c) => {
       buildingData[type] = machines;
 
       const updatedBuildings = buildingsData.map((b: any) =>
-        b.id === building ? buildingData : b
+          b.id === building ? buildingData : b
       );
 
       await docRef.update({ buildings: updatedBuildings });

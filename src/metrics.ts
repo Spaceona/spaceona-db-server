@@ -1,10 +1,11 @@
 import { Hono } from "hono";
 import { prisma } from ".";
-import { authMiddleware } from "./auth";
+import { authMiddleware } from "./auth/authMiddleware";
 
 const app = new Hono();
 
-app.use("*",authMiddleware);
+//TODO re-add auth if we do backend auth or move metrics to frontend
+//app.use("*",authMiddleware);
 
 // First API route: Daily summary
 app.get("/", async (c) => {

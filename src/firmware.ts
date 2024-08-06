@@ -2,11 +2,13 @@ import {Context, Hono, Next} from "hono";
 import { stream, streamText, streamSSE } from 'hono/streaming'
 import {lstat, readdir, readFile} from 'node:fs/promises';
 import * as path from "node:path";
-import { authMiddleware } from "./auth";
+import {authMiddleware, deviceAuthMiddleware} from "./auth/authMiddleware";
 
 const app = new Hono();
 
 app.use("*",authMiddleware);
+app.use("*",deviceAuthMiddleware);
+//TODO add a firmware specific auth route that checks if the client key and mac address are valid
 app.get('/latest', async (context) => {
     //console.log(await getAllVersions(path.join(__dirname, "../firmware")));
     //console.log(getLatestVersions(await getAllVersions(path.join(__dirname, "../firmware"))));
