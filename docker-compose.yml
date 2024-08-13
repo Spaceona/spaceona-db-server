@@ -9,6 +9,7 @@ services:
       - sqlite-data:/usr/src/app/prisma/data
       - logs-data:/usr/src/app/logs
       - ./spotr-22162-firebase-adminsdk-jcp40-c63b724f6d.json:/usr/src/app/spotr-22162-firebase-adminsdk-jcp40-c63b724f6d.json
+      - ./firmware:/usr/src/app/firmware
     env_file:
       - .env # Specify the path to your environment file relative to the docker-compose.yml file
     restart: always
